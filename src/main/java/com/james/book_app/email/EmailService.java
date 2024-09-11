@@ -4,6 +4,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -23,7 +24,6 @@ import static org.springframework.mail.javamail.MimeMessageHelper.MULTIPART_MODE
 public class EmailService {
 
     private final JavaMailSender javaMailSender;
-
     private final SpringTemplateEngine templateEngine;
 
     @Async
@@ -35,18 +35,14 @@ public class EmailService {
             String activationCode,
             String subject
     ) throws MessagingException {
-        String templateName;
-        if (emailTemplate == null) {
-            templateName = "confirm-email";
-        } else {
-            templateName = emailTemplate.name();
-        }
+        // Determine the template name, default to "confirm-email" if none provided
+        String templateName = (emailTemplate != null) ? emailTemplate.name() : "confirm-email";
+
+        // Create a new MIME message
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(
-                mimeMessage,
-                MULTIPART_MODE_MIXED,
-                UTF_8.name()
-        );
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, MULTIPART_MODE_MIXED, UTF_8.name());
+
+        // Prepare the email template context
         Map<String, Object> properties = new HashMap<>();
         properties.put("username", username);
         properties.put("confirmationUrl", confirmationUrl);
@@ -55,14 +51,21 @@ public class EmailService {
         Context context = new Context();
         context.setVariables(properties);
 
-        helper.setFrom("hospitalmanagementsystem1.0@gmail.com");
+        // Set email parameters
+        helper.setFrom("jamesugwuodoke@gmail.com");
         helper.setTo(to);
         helper.setSubject(subject);
 
-        String template = templateEngine.process(templateName, context);
+        // Generate the email content using Thymeleaf template
+        String content = templateEngine.process(templateName, context);
+        helper.setText(content, true);
 
-        helper.setText(template, true);
-
-        javaMailSender.send(mimeMessage);
-    }
-}
+        // Send the email
+        try {
+            javaMailSender.send(mimeMessage);
+            log.info("Email sent successfully to {}", to);
+        } catch (MailSendException e) {
+            log.error("Failed to send email to {} due to: {}", to, e.getMessage());
+            throw e;
+        }
+    }}
