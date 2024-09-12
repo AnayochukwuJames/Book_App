@@ -54,8 +54,6 @@ public class FeedbackService {
                 feedbacks.getTotalElements(),
                 feedbacks.getTotalPages(),
                 feedbacks.isFirst(),
-                feedbacks.isLast()
-        );
-
+                feedbacks.isLast());
     }
 }
